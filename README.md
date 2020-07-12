@@ -15,7 +15,7 @@ To configure and use:
 ```sh
 // Creating a policy - Needs to injected like a Singleton to share this policy
 var policy = new ResilientPolicy()
-    .New(10)                        // new with timeout 10
+    .WithTimeout(10)                // With timeout 10
     .WithRetry(6)                   // With exponential retry x times - 1, 2, 4, 8, 16, 32 ...(secs)
     .WithCircuitBreaker(3, 5)       // Break in 3 exception for 5 seconds
     .WithBulkhead(2, int.MaxValue)  // Parallelization of two with infinite queue
@@ -28,19 +28,31 @@ var response = await policy.ExecuteAndCaptureAsync(() =>
     "http://api.foo.com"
     .AllowAnyHttpStatus()
     .GetAsync());
-```    
+```  
+
+```sh
+// Implement interface ILoggerPolicy, according to choice of log provider 
+ public class LoggerPolicy : ILoggerPolicy
+    {
+        public void LogMessage(string msg)
+        { 
+            // Your logger choice here
+        }
+    }
 -----
+```
+
 
 ### Putting all together
 ```sh    
-public class MyClass // *** IMPORTANT: This class needs to be injected like Singleton
+public class MyClient // *** IMPORTANT: This class needs to be injected like Singleton
 {
     private readonly IAsyncPolicy<HttpResponseMessage> policy;
 
-    public MyClass()
-    {
+    public MyClient(ResilientPolicy resilientPolicy)
+    {        
         // Configure in the constructor to not generate a lot of policies
-        this.policy = new ResilientPolicy().New(10).WithRetry(6).WithCircuitBreaker(3, 5).WithBulkhead(2, int.MaxValue).Build(); 
+        this.policy = resilientPolicy.WithTimeout(10).WithRetry(6).WithCircuitBreaker(3, 5).WithBulkhead(2, int.MaxValue).Build(); 
     }
 
     public void DoRequest()
@@ -54,18 +66,32 @@ public class MyClass // *** IMPORTANT: This class needs to be injected like Sing
     }
 }
 ```
+```sh   
+// Concrete Logger  - This class will be injected in MyClient constructor
+public class LoggerPolicy : ILoggerPolicy
+{
+    private readonly ILogWriteOnlyRepository logWriteOnlyRepository;
 
+    public LoggerPolicy(ILogWriteOnlyRepository logWriteOnlyRepository)
+    {
+        this.logWriteOnlyRepository = logWriteOnlyRepository;
+    }
 
+    public void LogMessage(string msg)
+    {
+        // using local log - You can call serilog here if you want or any provider log
+        logWriteOnlyRepository.Add(Log.CreateProcessingLog("ServiceClient", msg));        
+    }
+}
 
+```
 
-### Requirements
-
-* [Serilog] - It's necessary configure serilog to effective log retries, circuit breakers etc;
-
-
-### Todos
-
- - Implement log without fix provider log;
+```sh   
+// If you use Autofac, configure like this
+builder.RegisterType<LoggerPolicy>().As<ILoggerPolicy>().InstancePerLifetimeScope(); 
+builder.RegisterType<ResiliencePolicies.Policies.ResilientPolicy>().AsSelf().InstancePerLifetimeScope();            
+builder.RegisterType<MyClient>().As<IMyClient>().AsSelf().SingleInstance(); // Singleton here
+```
 
 Reference
 ----

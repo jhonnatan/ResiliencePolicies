@@ -1,4 +1,5 @@
 ﻿using Gcsb.Connect.ResiliencePolicies.Policies.Component;
+using Gcsb.Connect.ResiliencePolicies.Policies.Logger;
 using Polly;
 using System.Net.Http;
 
@@ -12,7 +13,7 @@ namespace Gcsb.Connect.ResiliencePolicies.Policies.Decorators
     {
         public int MaxParallelizations { get; private set; }
         public int MaxQueuingActions { get; private set; }
-        public ResilientPolicyBulkhead(ResilientPolicyComponent component) : base(component) { }
+        public ResilientPolicyBulkhead(ILoggerPolicy logger, ResilientPolicyComponent component) : base(logger, component) { }
 
         public override IAsyncPolicy<HttpResponseMessage> GetPolicy()
         {

@@ -1,4 +1,5 @@
 ﻿using Gcsb.Connect.ResiliencePolicies.Policies.Component;
+using Gcsb.Connect.ResiliencePolicies.Policies.Logger;
 using Polly;
 using System;
 using System.Linq;
@@ -10,7 +11,7 @@ namespace Gcsb.Connect.ResiliencePolicies.Policies.Decorators
     {
         public int MaxExceptionsBeforeBreaking { get; private set; }
         public int CircuitBreakDurationSeconds { get; private set; }
-        public ResilientPolicyCircuitBreaker(ResilientPolicyComponent component) : base(component) { }
+        public ResilientPolicyCircuitBreaker(ILoggerPolicy logger, ResilientPolicyComponent component) : base(logger, component) { }
 
         public override IAsyncPolicy<HttpResponseMessage> GetPolicy()
         {
@@ -31,6 +32,6 @@ namespace Gcsb.Connect.ResiliencePolicies.Policies.Decorators
         {
             this.MaxExceptionsBeforeBreaking = maxExceptionsBeforeBreaking;
             this.CircuitBreakDurationSeconds = circuitBreakDurationSeconds;
-        }
+        }        
     }
 }

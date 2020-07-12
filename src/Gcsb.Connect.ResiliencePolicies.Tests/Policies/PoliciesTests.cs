@@ -8,16 +8,26 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using Xunit.Frameworks.Autofac;
+using System.Threading;
 
 namespace Gcsb.Connect.ResiliencePolicies.Tests.Policies
 {
+    [UseAutofacTestFramework]
     public class PoliciesTests
-    {
+    {        
+        private readonly ResilientPolicy resilientPolicyBuilder;
+
+        public PoliciesTests(ResilientPolicy resilientPolicyBuilder)
+        {            
+            this.resilientPolicyBuilder = resilientPolicyBuilder;
+        }
+
         [Fact]
         public void ShouldCreatePolicy()
         {
-            ResilientPolicy resilientPolicy = new ResilientPolicy();
-            var policy = resilientPolicy.New().WithRetry(3).Build();            
+            ResilientPolicy resilientPolicy = resilientPolicyBuilder;
+            var policy = resilientPolicy.WithTimeout(10).WithRetry(3).Build();            
             policy.Should().NotBeNull();
         }
 
@@ -34,7 +44,7 @@ namespace Gcsb.Connect.ResiliencePolicies.Tests.Policies
                     .RespondWith("API is throttling", 500); //4
 
                 // Act
-                var policy = new ResilientPolicy().New().WithRetry(3).Build();
+                var policy = resilientPolicyBuilder.WithTimeout(10).WithRetry(3).Build();
                 await policy.ExecuteAndCaptureAsync(() =>
                                         "http://api.foo.com"
                                         .AllowAnyHttpStatus()
@@ -59,7 +69,7 @@ namespace Gcsb.Connect.ResiliencePolicies.Tests.Policies
                     .RespondWith("Sucesso", 200);
 
                 // Act
-                var policy = new ResilientPolicy().New().WithRetry(3).Build();
+                var policy = resilientPolicyBuilder.WithTimeout(10).WithRetry(3).Build();
                 var response = await policy.ExecuteAndCaptureAsync(() =>
                                         "http://api.foo.com"
                                         .AllowAnyHttpStatus()
@@ -88,7 +98,8 @@ namespace Gcsb.Connect.ResiliencePolicies.Tests.Policies
                     .RespondWith("API is throttling", 500);
 
                 // Act
-                var policy = new ResilientPolicy().New().WithRetry(5).WithCircuitBreaker(3, 3).Build();
+                //var policy = resilientPolicyBuilder.WithTimeout(10).WithRetry(5).WithCircuitBreaker(3, 10).Build();
+                var policy = resilientPolicyBuilder.WithTimeout(10).WithCircuitBreaker(3, 3).WithRetry(5).Build();
                 var response = await policy.ExecuteAndCaptureAsync(() =>
                                         "http://api.foo.com"
                                         .AllowAnyHttpStatus()
@@ -110,13 +121,14 @@ namespace Gcsb.Connect.ResiliencePolicies.Tests.Policies
                 httpTest.RespondWith("OK", 200); // always return 200                    
 
                 // Act
-                var policy = new ResilientPolicy().New().WithBulkhead(2, int.MaxValue).Build();
+                var policy = resilientPolicyBuilder.WithTimeout(10).WithBulkhead(2, int.MaxValue).Build();
 
                 Task<Polly.PolicyResult<HttpResponseMessage>>[] tasks = new Task<Polly.PolicyResult<HttpResponseMessage>>[50];
 
                 for (int i = 0; i <= 49; i++)
                 {
                     int count = i;
+                    Thread.Sleep(100);
                     tasks[count] = Task.Run(() => policy.ExecuteAndCaptureAsync(() => "http://api.foo.com".AllowAnyHttpStatus().GetAsync()));
                 }
                 Task.WaitAll(tasks);
@@ -158,12 +170,13 @@ namespace Gcsb.Connect.ResiliencePolicies.Tests.Policies
                     .RespondWith("OK", 200);
 
                 // Act
-                var policy = new ResilientPolicy().New().WithRetry(5).WithBulkhead(2, int.MaxValue).Build();
+                var policy = resilientPolicyBuilder.WithTimeout(10).WithRetry(5).WithBulkhead(2, int.MaxValue).Build();
                 Task<Polly.PolicyResult<HttpResponseMessage>>[] tasks = new Task<Polly.PolicyResult<HttpResponseMessage>>[10];
 
                 for (int i = 0; i <= 9; i++)
                 {
                     int count = i;
+                    Thread.Sleep(100);
                     tasks[count] = Task.Run(() => policy.ExecuteAndCaptureAsync(() => "http://api.foo.com".AllowAnyHttpStatus().GetAsync()));
                 }
                 Task.WaitAll(tasks);
@@ -227,12 +240,13 @@ namespace Gcsb.Connect.ResiliencePolicies.Tests.Policies
                     .RespondWith("OK", 200);                    
 
                 // Act
-                var policy = new ResilientPolicy().New(10).WithRetry(6).WithCircuitBreaker(3, 5).WithBulkhead(2, int.MaxValue).Build();
+                var policy = resilientPolicyBuilder.WithTimeout(10).WithRetry(6).WithCircuitBreaker(3, 5).WithBulkhead(2, int.MaxValue).Build();
                 Task<Polly.PolicyResult<HttpResponseMessage>>[] tasks = new Task<Polly.PolicyResult<HttpResponseMessage>>[10];
 
                 for (int i = 0; i <= 9; i++)
                 {
                     int count = i;
+                    Thread.Sleep(100);
                     tasks[count] = Task.Run(() => policy.ExecuteAndCaptureAsync(() => "http://api.foo.com".AllowAnyHttpStatus().GetAsync()));
                 }
                 Task.WaitAll(tasks);
