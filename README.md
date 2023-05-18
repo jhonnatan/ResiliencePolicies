@@ -13,7 +13,7 @@ This solution was implemented using two design patterns, Decorator and Builder.
 To configure and use:
 
 ```sh
-// Creating a policy - Needs to injected like a Singleton to share this policy
+// Creating a policy - It needs to be injected like a Singleton to share this policy
 var policy = new ResilientPolicy()
     .WithTimeout(10)                // With timeout 10
     .WithRetry(6)                   // With exponential retry x times - 1, 2, 4, 8, 16, 32 ...(secs)
